@@ -83,6 +83,7 @@ public class RoundRobinScheduler implements IRequestScheduler
             queueSize.release();
             try
             {
+                System.err.println("CARTER TEST: Enqueuing Request Thread");
                 weightedQueue.put(t, timeoutMS);
                 // the scheduler will release us when a slot is available
             }

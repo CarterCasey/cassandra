@@ -89,6 +89,7 @@ public class CustomTThreadPoolServer extends TServer
     {
         try
         {
+            System.err.println("CC: Listening from CustomTThreadPoolServer...");
             serverTransport_.listen();
         }
         catch (TTransportException ttx)
@@ -111,6 +112,12 @@ public class CustomTThreadPoolServer extends TServer
                 TTransport client = serverTransport_.accept();
                 activeClients.incrementAndGet();
                 WorkerProcess wp = new WorkerProcess(client);
+
+
+                System.err.println("CC: Executing Client");
+                
+
+
                 executorService.execute(wp);
             }
             catch (TTransportException ttx)
@@ -203,6 +210,7 @@ public class CustomTThreadPoolServer extends TServer
                 // See comments at the end of serve().)
                 while (!stopped && processor.process(inputProtocol, outputProtocol))
                 {
+                    System.err.println("CC: In CustomTThreadPoolServer, running...");
                     inputProtocol = inputProtocolFactory_.getProtocol(inputTransport);
                     outputProtocol = outputProtocolFactory_.getProtocol(outputTransport);
                 }

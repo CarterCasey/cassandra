@@ -158,14 +158,18 @@ public class CassandraDaemon
         if (FBUtilities.isWindows())
             WindowsFailedSnapshotTracker.deleteOldSnapshots();
 
+        System.err.println("CC: Installing Thread Aware Security Manager...");
         ThreadAwareSecurityManager.install();
 
+        System.err.println("CC: Logging System Info...");
         logSystemInfo();
 
+        System.err.println("CC: Trying to lock all in CLibrary...");
         CLibrary.tryMlockall();
 
         try
         {
+            System.err.println("CC: Verify Startup Checks...");
             startupChecks.verify();
         }
         catch (StartupException e)
@@ -175,8 +179,10 @@ public class CassandraDaemon
 
         try
         {
+            System.err.println("CC: Checking for version changes...");
             if (SystemKeyspace.snapshotOnVersionChange())
             {
+                System.err.println("CC: Migrating data directories...");
                 SystemKeyspace.migrateDataDirs();
             }
         }
@@ -185,8 +191,11 @@ public class CassandraDaemon
             exitOrFail(3, e.getMessage(), e.getCause());
         }
 
+        System.err.println("CC: Maybe initializing JMX...");
         maybeInitJmx();
 
+
+        System.err.println("CC: Setting the Thread exception handler...");
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler()
         {
             public void uncaughtException(Thread t, Throwable e)
@@ -220,17 +229,23 @@ public class CassandraDaemon
          * We don't (and can't) wait for commit log replay here, but we don't need to - all schema changes force
          * explicit memtable flushes.
          */
+        System.err.println("CC: Migrating to modern 3.0 Keyspaces...");
         LegacySchemaMigrator.migrate();
 
         // Populate token metadata before flushing, for token-aware sstable partitioning (#6696)
+        System.err.println("CC: Populating token metadata...");
         StorageService.instance.populateTokenMetadata();
 
         // load schema from disk
+        System.err.println("CC: Loading schema instance from disk...");
         Schema.instance.loadFromDisk();
 
         // clean up debris in the rest of the keyspaces
+        System.err.println("CC: Cleaning keyspaces...");
         for (String keyspaceName : Schema.instance.getKeyspaces())
         {
+            System.err.println("CC: Cleaning Keyspace " + keyspaceName + "...");
+
             // Skip system as we've already cleaned it
             if (keyspaceName.equals(SystemKeyspace.NAME))
                 continue;
@@ -254,6 +269,7 @@ public class CassandraDaemon
         }
 
         // initialize keyspaces
+        System.err.println("CC: Initializing keyspaces...");
         for (String keyspaceName : Schema.instance.getKeyspaces())
         {
             if (logger.isDebugEnabled())
@@ -271,6 +287,7 @@ public class CassandraDaemon
 
         try
         {
+            System.err.println("CC: Trying to asynchronously load caches...");
             loadRowAndKeyCacheAsync().get();
         }
         catch (Throwable t)
@@ -281,6 +298,7 @@ public class CassandraDaemon
 
         try
         {
+            System.err.println("CC: Registering GC Inspector...");
             GCInspector.register();
         }
         catch (Throwable t)
@@ -292,6 +310,7 @@ public class CassandraDaemon
         // replay the log if necessary
         try
         {
+            System.err.println("CC: Recover any existing commit log...");
             CommitLog.instance.recover();
         }
         catch (IOException e)
@@ -300,7 +319,10 @@ public class CassandraDaemon
         }
 
         // Re-populate token metadata after commit log recover (new peers might be loaded onto system keyspace #10293)
+        System.err.println("CC: Populating token metadata... again...");
         StorageService.instance.populateTokenMetadata();
+
+        System.err.println("CC: Migrating legacy hints and logs...");
 
         // migrate any legacy (pre-3.0) hints from system.hints table into the new store
         new LegacyHintsMigrator(DatabaseDescriptor.getHintsDirectory(), DatabaseDescriptor.getMaxHintsFileSize()).migrate();
@@ -309,6 +331,7 @@ public class CassandraDaemon
         LegacyBatchlogMigrator.migrate();
 
         // enable auto compaction
+        System.err.println("CC: Enabling auto compaction...");
         for (Keyspace keyspace : Keyspace.all())
         {
             for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
@@ -320,6 +343,8 @@ public class CassandraDaemon
                 }
             }
         }
+
+        System.err.println("CC: Creating View Reuilder...");
 
         Runnable viewRebuild = new Runnable()
         {
@@ -333,9 +358,10 @@ public class CassandraDaemon
             }
         };
 
+        System.err.println("CC: Schedule the View Rebuild...");
         ScheduledExecutors.optionalTasks.schedule(viewRebuild, StorageService.RING_DELAY, TimeUnit.MILLISECONDS);
 
-
+        System.err.println("CC: Finish Keyspace Startup...");
         SystemKeyspace.finishStartup();
 
         // Metrics
@@ -346,6 +372,7 @@ public class CassandraDaemon
             try
             {
                 String reportFileLocation = CassandraDaemon.class.getClassLoader().getResource(metricsReporterConfigFile).getFile();
+                System.err.println("CC: Loading report file at " + reportFileLocation + "...");
                 ReporterConfig.loadFromFile(reportFileLocation).enableAll(CassandraMetricsRegistry.Metrics);
             }
             catch (Exception e)
@@ -355,9 +382,11 @@ public class CassandraDaemon
         }
 
         // start server internals
+        System.err.println("CC: Register this Daemon...");
         StorageService.instance.registerDaemon(this);
         try
         {
+            System.err.println("CC: Initialize StorageService Server...");
             StorageService.instance.initServer();
         }
         catch (ConfigurationException e)
@@ -366,6 +395,7 @@ public class CassandraDaemon
             exitOrFail(1, "Fatal configuration error", e);
         }
 
+        System.err.println("CC: Maybe load the Mx4jTool...");
         Mx4jTool.maybeLoad();
 
         if (!FBUtilities.getBroadcastAddress().equals(InetAddress.getLoopbackAddress()))
@@ -373,21 +403,25 @@ public class CassandraDaemon
 
         // schedule periodic background compaction task submission. this is simply a backstop against compactions stalling
         // due to scheduling errors or race conditions
+        System.err.println("CC: Schedule compactions...");
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ColumnFamilyStore.getBackgroundCompactionTaskSubmitter(), 5, 1, TimeUnit.MINUTES);
 
         // schedule periodic dumps of table size estimates into SystemKeyspace.SIZE_ESTIMATES_CF
         // set cassandra.size_recorder_interval to 0 to disable
         int sizeRecorderInterval = Integer.getInteger("cassandra.size_recorder_interval", 5 * 60);
         if (sizeRecorderInterval > 0)
+            System.err.println("CC: Schedule size estimate dumps...");
             ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(SizeEstimatesRecorder.instance, 30, sizeRecorderInterval, TimeUnit.SECONDS);
 
         // Thrift
+        System.err.println("CC: Instantiate thrift server...");
         InetAddress rpcAddr = DatabaseDescriptor.getRpcAddress();
         int rpcPort = DatabaseDescriptor.getRpcPort();
         int listenBacklog = DatabaseDescriptor.getRpcListenBacklog();
         thriftServer = new ThriftServer(rpcAddr, rpcPort, listenBacklog);
 
         // Native transport
+        System.err.println("CC: Instatiate Native Transport Service...");
         nativeTransportService = new NativeTransportService();
 
         completeSetup();
@@ -412,6 +446,7 @@ public class CassandraDaemon
     @VisibleForTesting
     public void completeSetup()
     {
+        System.err.println("CC: Setup marked as finished!");
         setupCompleted = true;
     }
 
@@ -468,16 +503,20 @@ public class CassandraDaemon
         String nativeFlag = System.getProperty("cassandra.start_native_transport");
         if ((nativeFlag != null && Boolean.parseBoolean(nativeFlag)) || (nativeFlag == null && DatabaseDescriptor.startNativeTransport()))
         {
+            System.err.println("CC: Starting Native Transport...");
             startNativeTransport();
+
+            System.err.println("CC: Set Storage Service to RPC ready...");
             StorageService.instance.setRpcReady(true);
         }
         else
             logger.info("Not starting native transport as requested. Use JMX (StorageService->startNativeTransport()) or nodetool (enablebinary) to start it");
 
         String rpcFlag = System.getProperty("cassandra.start_rpc");
-        if ((rpcFlag != null && Boolean.parseBoolean(rpcFlag)) || (rpcFlag == null && DatabaseDescriptor.startRpc()))
+        if ((rpcFlag != null && Boolean.parseBoolean(rpcFlag)) || (rpcFlag == null && DatabaseDescriptor.startRpc())) {
+            System.err.println("CC: Starting Thrift Server...");
             thriftServer.start();
-        else
+        } else
             logger.info("Not starting RPC server as requested. Use JMX (StorageService->startRPCServer()) or nodetool (enablethrift) to start it");
     }
 
@@ -533,6 +572,7 @@ public class CassandraDaemon
         {
             try
             {
+                System.err.println("CC: Forcing static initialization..."); // CC
                 DatabaseDescriptor.forceStaticInitialization();
             }
             catch (ExceptionInInitializerError e)
@@ -543,6 +583,7 @@ public class CassandraDaemon
             try
             {
                 MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+                System.err.println("Registering Managed Bean for Native Access...");
                 mbs.registerMBean(new StandardMBean(new NativeAccess(), NativeAccessMBean.class), new ObjectName(MBEAN_NAME));
             }
             catch (Exception e)
@@ -558,22 +599,28 @@ public class CassandraDaemon
                 WindowsTimer.startTimerPeriod(DatabaseDescriptor.getWindowsTimerInterval());
             }
 
+            System.err.println("CC: Setting up...");
             setup();
 
             String pidFile = System.getProperty("cassandra-pidfile");
 
             if (pidFile != null)
             {
+                System.err.println("CC: Creating new PID file: " + pidFile + "...");
                 new File(pidFile).deleteOnExit();
             }
 
             if (System.getProperty("cassandra-foreground") == null)
             {
+                System.err.println("CC: Closing stdout and stderr...");
+
                 System.out.close();
                 System.err.close();
             }
 
+            System.err.println("CC: Starting...");
             start();
+            System.err.println("CC: Finished startup!");
         }
         catch (Throwable e)
         {
@@ -687,6 +734,7 @@ public class CassandraDaemon
 
     public static void main(String[] args)
     {
+        System.err.println("CC: Activating the instance...");
         instance.activate();
     }
 

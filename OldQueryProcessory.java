@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.cassandra.cql3;
 
 import java.nio.ByteBuffer;
@@ -39,21 +56,16 @@ import org.apache.cassandra.transport.messages.ResultMessage;
 import org.apache.cassandra.utils.*;
 import org.github.jamm.MemoryMeter;
 
+#define __FUNCTION__ Thread.currentThread().getStackTrace()[1].getMethodName()
+
+public Object retParse(Object ret, String file_name, Integer line_number, String function_name)
+{
+    System.err.format("CC: Returning from %s at line %d in %s\n", function_name, line_number, file_name);
+    return ret;
+}
+
 public class QueryProcessor implements QueryHandler
 {
-    private static Object retParse(Object ret, String file_name, Integer line_number, String function_name)
-    {
-        String output = String.format("CC: Returning from %s at line %d in %s...\n", function_name, line_number, file_name);
-        String tabs = "\t";
-        for (StackTraceElement caller : Thread.currentThread().getStackTrace()) {
-            output += String.format("CC:%sCalled from %s...\n", tabs, caller);
-        }
-
-        System.err.print(output);
-
-        return ret;
-    }
-
     public static final CassandraVersion CQL_VERSION = new CassandraVersion("3.3.1");
 
     public static final QueryProcessor instance = new QueryProcessor();
@@ -67,7 +79,7 @@ public class QueryProcessor implements QueryHandler
         @Override
         public int weightOf(MD5Digest key, ParsedStatement.Prepared value)
         {
-            return (int)retParse(Ints.checkedCast(measure(key) + measure(value.statement) + measure(value.boundNames)), "QueryProcessor.java", 82, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(Ints.checkedCast(measure(key) + measure(value.statement) + measure(value.boundNames)), __FILE__, __LINE__, __FUNCTION__);
         }
     };
 
@@ -76,7 +88,7 @@ public class QueryProcessor implements QueryHandler
         @Override
         public int weightOf(Integer key, ParsedStatement.Prepared value)
         {
-            return (int)retParse(Ints.checkedCast(measure(key) + measure(value.statement) + measure(value.boundNames)), "QueryProcessor.java", 91, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(Ints.checkedCast(measure(key) + measure(value.statement) + measure(value.boundNames)), __FILE__, __LINE__, __FUNCTION__);
         }
     };
 
@@ -102,7 +114,6 @@ public class QueryProcessor implements QueryHandler
                              {
                                  public void onEviction(MD5Digest md5Digest, ParsedStatement.Prepared prepared)
                                  {
-                                        System.err.println("CC: Eviction Occurring...");
                                      metrics.preparedStatementsEvicted.inc();
                                      lastMinuteEvictionsCount.incrementAndGet();
                                  }
@@ -115,7 +126,6 @@ public class QueryProcessor implements QueryHandler
                                    {
                                        public void onEviction(Integer integer, ParsedStatement.Prepared prepared)
                                        {
-                                            System.err.println("CC: Eviction Occurring...");
                                            metrics.preparedStatementsEvicted.inc();
                                            lastMinuteEvictionsCount.incrementAndGet();
                                        }
@@ -126,7 +136,6 @@ public class QueryProcessor implements QueryHandler
         {
             public void run()
             {
-                System.err.println("CC: In Scheduled Tasks, running...");
                 long count = lastMinuteEvictionsCount.getAndSet(0);
                 if (count > 0)
                     logger.info("{} prepared statements discarded in the last minute because cache limit reached ({} bytes)",
@@ -138,7 +147,7 @@ public class QueryProcessor implements QueryHandler
 
     public static int preparedStatementsCount()
     {
-        return (int)retParse(preparedStatements.size() + thriftPreparedStatements.size(), "QueryProcessor.java", 150, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(preparedStatements.size() + thriftPreparedStatements.size(), __FILE__, __LINE__, __FUNCTION__);
     }
 
     // Work around initialization dependency
@@ -158,23 +167,22 @@ public class QueryProcessor implements QueryHandler
 
     private static QueryState internalQueryState()
     {
-        return (QueryState)retParse(InternalStateInstance.INSTANCE.queryState, "QueryProcessor.java", 170, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(InternalStateInstance.INSTANCE.queryState, __FILE__, __LINE__, __FUNCTION__);
     }
 
     private QueryProcessor()
     {
-        System.err.println("CC: Registering new MigrationManager from QueryProcessor...");
         MigrationManager.instance.register(new MigrationSubscriber());
     }
 
     public ParsedStatement.Prepared getPrepared(MD5Digest id)
     {
-        return (ParsedStatement.Prepared)retParse(preparedStatements.get(id), "QueryProcessor.java", 180, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(preparedStatements.get(id), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public ParsedStatement.Prepared getPreparedForThrift(Integer id)
     {
-        return (ParsedStatement.Prepared)retParse(thriftPreparedStatements.get(id), "QueryProcessor.java", 185, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(thriftPreparedStatements.get(id), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public static void validateKey(ByteBuffer key) throws InvalidRequestException
@@ -203,13 +211,13 @@ public class QueryProcessor implements QueryHandler
         statement.validate(clientState);
 
         ResultMessage result = statement.execute(queryState, options);
-        return (ResultMessage)retParse(result == null ? new ResultMessage.Void() : result, "QueryProcessor.java", 214, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(result == null ? new ResultMessage.Void() : result, __FILE__, __LINE__, __FUNCTION__);
     }
 
     public static ResultMessage process(String queryString, ConsistencyLevel cl, QueryState queryState)
     throws RequestExecutionException, RequestValidationException
     {
-        return (ResultMessage)retParse(instance.process(queryString, queryState, QueryOptions.forInternalCalls(cl, Collections.<ByteBuffer>emptyList())), "QueryProcessor.java", 220, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(instance.process(queryString, queryState, QueryOptions.forInternalCalls(cl, Collections.<ByteBuffer>emptyList())), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public ResultMessage process(String query,
@@ -218,7 +226,7 @@ public class QueryProcessor implements QueryHandler
                                  Map<String, ByteBuffer> customPayload)
                                          throws RequestExecutionException, RequestValidationException
     {
-        return (ResultMessage)retParse(process(query, state, options), "QueryProcessor.java", 229, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(process(query, state, options), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public ResultMessage process(String queryString, QueryState queryState, QueryOptions options)
@@ -233,31 +241,31 @@ public class QueryProcessor implements QueryHandler
         if (!queryState.getClientState().isInternal)
             metrics.regularStatementsExecuted.inc();
 
-        return (ResultMessage)retParse(processStatement(prepared, queryState, options), "QueryProcessor.java", 244, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(processStatement(prepared, queryState, options), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public static ParsedStatement.Prepared parseStatement(String queryStr, QueryState queryState) throws RequestValidationException
     {
-        return (ParsedStatement.Prepared)retParse(getStatement(queryStr, queryState.getClientState()), "QueryProcessor.java", 249, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(getStatement(queryStr, queryState.getClientState()), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public static UntypedResultSet process(String query, ConsistencyLevel cl) throws RequestExecutionException
     {
-        return (UntypedResultSet)retParse(process(query, cl, Collections.<ByteBuffer>emptyList()), "QueryProcessor.java", 254, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(process(query, cl, Collections.<ByteBuffer>emptyList()), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public static UntypedResultSet process(String query, ConsistencyLevel cl, List<ByteBuffer> values) throws RequestExecutionException
     {
         ResultMessage result = instance.process(query, QueryState.forInternalCalls(), QueryOptions.forInternalCalls(cl, values));
         if (result instanceof ResultMessage.Rows)
-            return (UntypedResultSet)retParse(UntypedResultSet.create(((ResultMessage.Rows)result).result), "QueryProcessor.java", 261, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(UntypedResultSet.create(((ResultMessage.Rows)result).result), __FILE__, __LINE__, __FUNCTION__);
         else
-            return (UntypedResultSet)retParse(null, "QueryProcessor.java", 263, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(null, __FILE__, __LINE__, __FUNCTION__);
     }
 
     private static QueryOptions makeInternalOptions(ParsedStatement.Prepared prepared, Object[] values)
     {
-        return (QueryOptions)retParse(makeInternalOptions(prepared, values, ConsistencyLevel.ONE), "QueryProcessor.java", 268, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(makeInternalOptions(prepared, values, ConsistencyLevel.ONE), __FILE__, __LINE__, __FUNCTION__);
     }
 
     private static QueryOptions makeInternalOptions(ParsedStatement.Prepared prepared, Object[] values, ConsistencyLevel cl)
@@ -272,20 +280,20 @@ public class QueryProcessor implements QueryHandler
             AbstractType type = prepared.boundNames.get(i).type;
             boundValues.add(value instanceof ByteBuffer || value == null ? (ByteBuffer)value : type.decompose(value));
         }
-        return (QueryOptions)retParse(QueryOptions.forInternalCalls(cl, boundValues), "QueryProcessor.java", 283, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(QueryOptions.forInternalCalls(cl, boundValues), __FILE__, __LINE__, __FUNCTION__);
     }
 
     private static ParsedStatement.Prepared prepareInternal(String query) throws RequestValidationException
     {
         ParsedStatement.Prepared prepared = internalStatements.get(query);
         if (prepared != null)
-            return (ParsedStatement.Prepared)retParse(prepared, "QueryProcessor.java", 290, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(prepared, __FILE__, __LINE__, __FUNCTION__);
 
         // Note: if 2 threads prepare the same query, we'll live so don't bother synchronizing
         prepared = parseStatement(query, internalQueryState());
         prepared.statement.validate(internalQueryState().getClientState());
         internalStatements.putIfAbsent(query, prepared);
-        return (ParsedStatement.Prepared)retParse(prepared, "QueryProcessor.java", 296, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(prepared, __FILE__, __LINE__, __FUNCTION__);
     }
 
     public static UntypedResultSet executeInternal(String query, Object... values)
@@ -293,9 +301,9 @@ public class QueryProcessor implements QueryHandler
         ParsedStatement.Prepared prepared = prepareInternal(query);
         ResultMessage result = prepared.statement.executeInternal(internalQueryState(), makeInternalOptions(prepared, values));
         if (result instanceof ResultMessage.Rows)
-            return (UntypedResultSet)retParse(UntypedResultSet.create(((ResultMessage.Rows)result).result), "QueryProcessor.java", 304, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(UntypedResultSet.create(((ResultMessage.Rows)result).result), __FILE__, __LINE__, __FUNCTION__);
         else
-            return (UntypedResultSet)retParse(null, "QueryProcessor.java", 306, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(null, __FILE__, __LINE__, __FUNCTION__);
     }
 
     public static UntypedResultSet execute(String query, ConsistencyLevel cl, QueryState state, Object... values)
@@ -306,9 +314,9 @@ public class QueryProcessor implements QueryHandler
             ParsedStatement.Prepared prepared = prepareInternal(query);
             ResultMessage result = prepared.statement.execute(state, makeInternalOptions(prepared, values));
             if (result instanceof ResultMessage.Rows)
-                return (UntypedResultSet)retParse(UntypedResultSet.create(((ResultMessage.Rows)result).result), "QueryProcessor.java", 317, Thread.currentThread().getStackTrace()[1].getMethodName());
+                return retParse(UntypedResultSet.create(((ResultMessage.Rows)result).result), __FILE__, __LINE__, __FUNCTION__);
             else
-                return (UntypedResultSet)retParse(null, "QueryProcessor.java", 319, Thread.currentThread().getStackTrace()[1].getMethodName());
+                return retParse(null, __FILE__, __LINE__, __FUNCTION__);
         }
         catch (RequestValidationException e)
         {
@@ -324,23 +332,27 @@ public class QueryProcessor implements QueryHandler
 
         SelectStatement select = (SelectStatement)prepared.statement;
         QueryPager pager = select.getQuery(makeInternalOptions(prepared, values), FBUtilities.nowInSeconds()).getPager(null, Server.CURRENT_VERSION);
-        return (UntypedResultSet)retParse(UntypedResultSet.create(select, pager, pageSize), "QueryProcessor.java", 335, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(UntypedResultSet.create(select, pager, pageSize), __FILE__, __LINE__, __FUNCTION__);
     }
 
+    /**
+     * Same than executeInternal, but to use for queries we know are only executed once so that the
+     * created statement object is not cached.
+     */
     public static UntypedResultSet executeOnceInternal(String query, Object... values)
     {
         ParsedStatement.Prepared prepared = parseStatement(query, internalQueryState());
         prepared.statement.validate(internalQueryState().getClientState());
         ResultMessage result = prepared.statement.executeInternal(internalQueryState(), makeInternalOptions(prepared, values));
         if (result instanceof ResultMessage.Rows)
-            return (UntypedResultSet)retParse(UntypedResultSet.create(((ResultMessage.Rows)result).result), "QueryProcessor.java", 348, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(UntypedResultSet.create(((ResultMessage.Rows)result).result), __FILE__, __LINE__, __FUNCTION__);
         else
-            return (UntypedResultSet)retParse(null, "QueryProcessor.java", 350, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(null, __FILE__, __LINE__, __FUNCTION__);
     }
 
     public static UntypedResultSet resultify(String query, RowIterator partition)
     {
-        return (UntypedResultSet)retParse(resultify(query, PartitionIterators.singletonIterator(partition)), "QueryProcessor.java", 355, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(resultify(query, PartitionIterators.singletonIterator(partition)), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public static UntypedResultSet resultify(String query, PartitionIterator partitions)
@@ -349,7 +361,7 @@ public class QueryProcessor implements QueryHandler
         {
             SelectStatement ss = (SelectStatement) getStatement(query, null).statement;
             ResultSet cqlRows = ss.process(iter, FBUtilities.nowInSeconds());
-            return (UntypedResultSet)retParse(UntypedResultSet.create(cqlRows), "QueryProcessor.java", 364, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(UntypedResultSet.create(cqlRows), __FILE__, __LINE__, __FUNCTION__);
         }
     }
 
@@ -357,20 +369,20 @@ public class QueryProcessor implements QueryHandler
                                           QueryState state,
                                           Map<String, ByteBuffer> customPayload) throws RequestValidationException
     {
-        return (ResultMessage.Prepared)retParse(prepare(query, state), "QueryProcessor.java", 372, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(prepare(query, state), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public ResultMessage.Prepared prepare(String queryString, QueryState queryState)
     {
         ClientState cState = queryState.getClientState();
-        return (ResultMessage.Prepared)retParse(prepare(queryString, cState, cState instanceof ThriftClientState), "QueryProcessor.java", 378, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(prepare(queryString, cState, cState instanceof ThriftClientState), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public static ResultMessage.Prepared prepare(String queryString, ClientState clientState, boolean forThrift)
     {
         ResultMessage.Prepared existing = getStoredPreparedStatement(queryString, clientState.getRawKeyspace(), forThrift);
         if (existing != null)
-            return (ResultMessage.Prepared)retParse(existing, "QueryProcessor.java", 385, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(existing, __FILE__, __LINE__, __FUNCTION__);
 
         ParsedStatement.Prepared prepared = getStatement(queryString, clientState);
         int boundTerms = prepared.statement.getBoundTerms();
@@ -378,19 +390,19 @@ public class QueryProcessor implements QueryHandler
             throw new InvalidRequestException(String.format("Too many markers(?). %d markers exceed the allowed maximum of %d", boundTerms, FBUtilities.MAX_UNSIGNED_SHORT));
         assert boundTerms == prepared.boundNames.size();
 
-        return (ResultMessage.Prepared)retParse(storePreparedStatement(queryString, clientState.getRawKeyspace(), prepared, forThrift), "QueryProcessor.java", 393, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(storePreparedStatement(queryString, clientState.getRawKeyspace(), prepared, forThrift), __FILE__, __LINE__, __FUNCTION__);
     }
 
     private static MD5Digest computeId(String queryString, String keyspace)
     {
         String toHash = keyspace == null ? queryString : keyspace + queryString;
-        return (MD5Digest)retParse(MD5Digest.compute(toHash), "QueryProcessor.java", 399, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(MD5Digest.compute(toHash), __FILE__, __LINE__, __FUNCTION__);
     }
 
     private static Integer computeThriftId(String queryString, String keyspace)
     {
         String toHash = keyspace == null ? queryString : keyspace + queryString;
-        return (Integer)retParse(toHash.hashCode(), "QueryProcessor.java", 405, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(toHash.hashCode(), __FILE__, __LINE__, __FUNCTION__);
     }
 
     private static ResultMessage.Prepared getStoredPreparedStatement(String queryString, String keyspace, boolean forThrift)
@@ -400,13 +412,13 @@ public class QueryProcessor implements QueryHandler
         {
             Integer thriftStatementId = computeThriftId(queryString, keyspace);
             ParsedStatement.Prepared existing = thriftPreparedStatements.get(thriftStatementId);
-            return (ResultMessage.Prepared)retParse(existing == null ? null : ResultMessage.Prepared.forThrift(thriftStatementId, existing.boundNames), "QueryProcessor.java", 415, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(existing == null ? null : ResultMessage.Prepared.forThrift(thriftStatementId, existing.boundNames), __FILE__, __LINE__, __FUNCTION__);
         }
         else
         {
             MD5Digest statementId = computeId(queryString, keyspace);
             ParsedStatement.Prepared existing = preparedStatements.get(statementId);
-            return (ResultMessage.Prepared)retParse(existing == null ? null : new ResultMessage.Prepared(statementId, existing), "QueryProcessor.java", 421, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(existing == null ? null : new ResultMessage.Prepared(statementId, existing), __FILE__, __LINE__, __FUNCTION__);
         }
     }
 
@@ -425,13 +437,13 @@ public class QueryProcessor implements QueryHandler
         {
             Integer statementId = computeThriftId(queryString, keyspace);
             thriftPreparedStatements.put(statementId, prepared);
-            return (ResultMessage.Prepared)retParse(ResultMessage.Prepared.forThrift(statementId, prepared.boundNames), "QueryProcessor.java", 440, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(ResultMessage.Prepared.forThrift(statementId, prepared.boundNames), __FILE__, __LINE__, __FUNCTION__);
         }
         else
         {
             MD5Digest statementId = computeId(queryString, keyspace);
             preparedStatements.put(statementId, prepared);
-            return (ResultMessage.Prepared)retParse(new ResultMessage.Prepared(statementId, prepared), "QueryProcessor.java", 446, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(new ResultMessage.Prepared(statementId, prepared), __FILE__, __LINE__, __FUNCTION__);
         }
     }
 
@@ -441,7 +453,7 @@ public class QueryProcessor implements QueryHandler
                                          Map<String, ByteBuffer> customPayload)
                                                  throws RequestExecutionException, RequestValidationException
     {
-        return (ResultMessage)retParse(processPrepared(statement, state, options), "QueryProcessor.java", 456, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(processPrepared(statement, state, options), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public ResultMessage processPrepared(CQLStatement statement, QueryState queryState, QueryOptions options)
@@ -464,7 +476,7 @@ public class QueryProcessor implements QueryHandler
         }
 
         metrics.preparedStatementsExecuted.inc();
-        return (ResultMessage)retParse(processStatement(statement, queryState, options), "QueryProcessor.java", 479, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(processStatement(statement, queryState, options), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public ResultMessage processBatch(BatchStatement statement,
@@ -473,7 +485,7 @@ public class QueryProcessor implements QueryHandler
                                       Map<String, ByteBuffer> customPayload)
                                               throws RequestExecutionException, RequestValidationException
     {
-        return (ResultMessage)retParse(processBatch(statement, state, options), "QueryProcessor.java", 488, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(processBatch(statement, state, options), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public ResultMessage processBatch(BatchStatement batch, QueryState queryState, BatchQueryOptions options)
@@ -483,7 +495,7 @@ public class QueryProcessor implements QueryHandler
         batch.checkAccess(clientState);
         batch.validate();
         batch.validate(clientState);
-        return (ResultMessage)retParse(batch.execute(queryState, options), "QueryProcessor.java", 498, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(batch.execute(queryState, options), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public static ParsedStatement.Prepared getStatement(String queryStr, ClientState clientState)
@@ -497,14 +509,14 @@ public class QueryProcessor implements QueryHandler
             ((CFStatement)statement).prepareKeyspace(clientState);
 
         Tracing.trace("Preparing statement");
-        return (ParsedStatement.Prepared)retParse(statement.prepare(), "QueryProcessor.java", 512, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(statement.prepare(), __FILE__, __LINE__, __FUNCTION__);
     }
 
     public static ParsedStatement parseStatement(String queryStr) throws SyntaxException
     {
         try
         {
-            return (ParsedStatement)retParse(CQLFragmentParser.parseAnyUnhandled(CqlParser::query, queryStr), "QueryProcessor.java", 519, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(CQLFragmentParser.parseAnyUnhandled(CqlParser::query, queryStr), __FILE__, __LINE__, __FUNCTION__);
         }
         catch (CassandraException ce)
         {
@@ -526,14 +538,13 @@ public class QueryProcessor implements QueryHandler
 
     private static long measure(Object key)
     {
-        return (long)retParse(meter.measureDeep(key), "QueryProcessor.java", 541, Thread.currentThread().getStackTrace()[1].getMethodName());
+        return retParse(meter.measureDeep(key), __FILE__, __LINE__, __FUNCTION__);
     }
 
     private static class MigrationSubscriber extends MigrationListener
     {
         private void removeInvalidPreparedStatements(String ksName, String cfName)
         {
-            //System.err.println("CC: In removeInvalidPreparedStatements, primary...");
             removeInvalidPreparedStatements(internalStatements.values().iterator(), ksName, cfName);
             removeInvalidPreparedStatements(preparedStatements.values().iterator(), ksName, cfName);
             removeInvalidPreparedStatements(thriftPreparedStatements.values().iterator(), ksName, cfName);
@@ -541,7 +552,6 @@ public class QueryProcessor implements QueryHandler
 
         private void removeInvalidPreparedStatements(Iterator<ParsedStatement.Prepared> iterator, String ksName, String cfName)
         {
-            //System.err.println("CC: In removeInvalidPreparedStatements, secondary...");
             while (iterator.hasNext())
             {
                 if (shouldInvalidate(ksName, cfName, iterator.next().statement))
@@ -572,27 +582,25 @@ public class QueryProcessor implements QueryHandler
                 for (ModificationStatement stmt : batchStatement.getStatements())
                 {
                     if (shouldInvalidate(ksName, cfName, stmt))
-                        return (boolean)retParse(true, "QueryProcessor.java", 585, Thread.currentThread().getStackTrace()[1].getMethodName());
+                        return retParse(true, __FILE__, __LINE__, __FUNCTION__);
                 }
-                return (boolean)retParse(false, "QueryProcessor.java", 587, Thread.currentThread().getStackTrace()[1].getMethodName());
+                return retParse(false, __FILE__, __LINE__, __FUNCTION__);
             }
             else
             {
-                return (boolean)retParse(false, "QueryProcessor.java", 591, Thread.currentThread().getStackTrace()[1].getMethodName());
+                return retParse(false, __FILE__, __LINE__, __FUNCTION__);
             }
 
-            return (boolean)retParse(ksName.equals(statementKsName) && (cfName == null || cfName.equals(statementCfName)), "QueryProcessor.java", 594, Thread.currentThread().getStackTrace()[1].getMethodName());
+            return retParse(ksName.equals(statementKsName) && (cfName == null || cfName.equals(statementCfName)), __FILE__, __LINE__, __FUNCTION__);
         }
 
         public void onCreateFunction(String ksName, String functionName, List<AbstractType<?>> argTypes)
         {
-            //System.err.println("CC: In onCreateFunction...");
             onCreateFunctionInternal(ksName, functionName, argTypes);
         }
 
         public void onCreateAggregate(String ksName, String aggregateName, List<AbstractType<?>> argTypes)
         {
-            //System.err.println("CC: In onCreateAggregate...");
             onCreateFunctionInternal(ksName, aggregateName, argTypes);
         }
 
@@ -600,7 +608,6 @@ public class QueryProcessor implements QueryHandler
         {
             // in case there are other overloads, we have to remove all overloads since argument type
             // matching may change (due to type casting)
-            //System.err.println("CC: onCreateFunctionInternal...");
             if (Schema.instance.getKSMetaData(ksName).functions.get(new FunctionName(ksName, functionName)).size() > 1)
             {
                 removeInvalidPreparedStatementsForFunction(preparedStatements.values().iterator(), ksName, functionName);
@@ -610,7 +617,6 @@ public class QueryProcessor implements QueryHandler
 
         public void onUpdateColumnFamily(String ksName, String cfName, boolean columnsDidChange)
         {
-            // System.err.println("CC: onUpdateColumnFamily...");
             logger.trace("Column definitions for {}.{} changed, invalidating related prepared statements", ksName, cfName);
             if (columnsDidChange)
                 removeInvalidPreparedStatements(ksName, cfName);
@@ -618,33 +624,28 @@ public class QueryProcessor implements QueryHandler
 
         public void onDropKeyspace(String ksName)
         {
-            //System.err.println("CC: onDropKeyspace...");
             logger.trace("Keyspace {} was dropped, invalidating related prepared statements", ksName);
             removeInvalidPreparedStatements(ksName, null);
         }
 
         public void onDropColumnFamily(String ksName, String cfName)
         {
-            //System.err.println("CC: onDropColumnFamily...");
             logger.trace("Table {}.{} was dropped, invalidating related prepared statements", ksName, cfName);
             removeInvalidPreparedStatements(ksName, cfName);
         }
 
         public void onDropFunction(String ksName, String functionName, List<AbstractType<?>> argTypes)
         {
-            //System.err.println("CC: onDropFunction...");
             onDropFunctionInternal(ksName, functionName, argTypes);
         }
 
         public void onDropAggregate(String ksName, String aggregateName, List<AbstractType<?>> argTypes)
         {
-            //System.err.println("CC: onDropAggregate...");
             onDropFunctionInternal(ksName, aggregateName, argTypes);
         }
 
         private static void onDropFunctionInternal(String ksName, String functionName, List<AbstractType<?>> argTypes)
         {
-            //System.err.println("CC: onDropAggregate...");
             removeInvalidPreparedStatementsForFunction(preparedStatements.values().iterator(), ksName, functionName);
             removeInvalidPreparedStatementsForFunction(thriftPreparedStatements.values().iterator(), ksName, functionName);
         }
@@ -653,10 +654,8 @@ public class QueryProcessor implements QueryHandler
                                                                        final String ksName,
                                                                        final String functionName)
         {
-            //System.err.println("CC: removeInvalidPreparedStatementsForFunction...");
             Predicate<Function> matchesFunction = f -> ksName.equals(f.name().keyspace) && functionName.equals(f.name().name);
             Iterators.removeIf(statements, statement -> Iterables.any(statement.statement.getFunctions(), matchesFunction));
         }
     }
 }
-

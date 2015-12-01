@@ -45,6 +45,10 @@ public class ThriftServer implements CassandraDaemon.Server
 
     public ThriftServer(InetAddress address, int port, int backlog)
     {
+        System.err.println("CC: Initializing ThriftServer with Address " +
+                            address + ", Port " + port + ", and Backlog " +
+                            backlog + "...");
+
         this.address = address;
         this.port = port;
         this.backlog = backlog;
@@ -54,7 +58,9 @@ public class ThriftServer implements CassandraDaemon.Server
     {
         if (server == null)
         {
+            System.err.println("CC: Creating ThriftServer Interface...");
             CassandraServer iface = getCassandraServer();
+            System.err.println("CC: Creating ThriftServer Thread...");
             server = new ThriftServerThread(address, port, backlog, getProcessor(iface), getTransportFactory());
             server.start();
         }

@@ -76,6 +76,8 @@ public class CassandraServer implements Cassandra.Iface
 
     public CassandraServer()
     {
+        System.err.println("CC: Creating CassandraServer RequestScheduler" +
+                           " with ID: " + DatabaseDescriptor.getRequestSchedulerId() + "...");
         requestScheduler = DatabaseDescriptor.getRequestScheduler();
         registerMetrics();
     }
@@ -93,6 +95,7 @@ public class CassandraServer implements Cassandra.Iface
             schedule(DatabaseDescriptor.getReadRpcTimeout());
             try
             {
+                System.err.println("CC: Calling StorageProxy.read...");
                 return StorageProxy.read(new SinglePartitionReadCommand.Group(commands, DataLimits.NONE), consistency_level, cState);
             }
             finally
@@ -946,6 +949,7 @@ public class CassandraServer implements Cassandra.Iface
             Keyspace.open(metadata.ksName).getColumnFamilyStore(metadata.cfName).indexManager.validate(partitionUpdates);
 
             schedule(DatabaseDescriptor.getWriteRpcTimeout());
+            System.err.println("CC: Calling StorageProxy.cas...");
             try (RowIterator result = StorageProxy.cas(cState.getKeyspace(),
                                                        column_family,
                                                        dk,
@@ -1430,6 +1434,7 @@ public class CassandraServer implements Cassandra.Iface
         schedule(timeout);
         try
         {
+            System.err.println("CC: Calling StorageProxy.mutateWithTriggers...");
             StorageProxy.mutateWithTriggers(mutations, consistencyLevel, mutateAtomically);
         }
         catch (RequestExecutionException e)
@@ -1529,6 +1534,7 @@ public class CassandraServer implements Cassandra.Iface
                                                                               limits,
                                                                               new DataRange(bounds, filter),
                                                                               Optional.empty());
+                System.err.println("CC: Calling StorageProxy.getRangeSlice...");
                 try (PartitionIterator results = StorageProxy.getRangeSlice(cmd, consistencyLevel))
                 {
                     assert results != null;
@@ -1623,6 +1629,7 @@ public class CassandraServer implements Cassandra.Iface
                                                                               limits,
                                                                               new DataRange(bounds, filter).forPaging(bounds, metadata.comparator, pageFrom, true),
                                                                               Optional.empty());
+                System.err.println("CC: Calling StorageProxy.getRangeSlice...");
                 try (PartitionIterator results = StorageProxy.getRangeSlice(cmd, consistencyLevel))
                 {
                     return thriftifyKeySlices(results, new ColumnParent(column_family), limits.perPartitionCount());
@@ -1715,6 +1722,7 @@ public class CassandraServer implements Cassandra.Iface
                                                                           limits,
                                                                           new DataRange(bounds, filter),
                                                                           Optional.empty());
+            System.err.println("CC: Calling StorageProxy.getRangeSlice...");
             try (PartitionIterator results = StorageProxy.getRangeSlice(cmd, consistencyLevel))
             {
                 return thriftifyKeySlices(results, column_parent, limits.perPartitionCount());
@@ -1859,6 +1867,7 @@ public class CassandraServer implements Cassandra.Iface
     {
         try
         {
+            System.err.println("CC: Scheduling Request...");
             requestScheduler.queue(Thread.currentThread(), state().getSchedulingValue(), timeoutMS);
         }
         catch (TimeoutException e)
@@ -2072,6 +2081,7 @@ public class CassandraServer implements Cassandra.Iface
             schedule(DatabaseDescriptor.getTruncateRpcTimeout());
             try
             {
+                System.err.println("CC: Calling StorageProxy.truncateBlocking...");
                 StorageProxy.truncateBlocking(cState.getKeyspace(), cfname);
             }
             finally
@@ -2116,6 +2126,7 @@ public class CassandraServer implements Cassandra.Iface
     public Map<String, List<String>> describe_schema_versions() throws TException, InvalidRequestException
     {
         logger.trace("checking schema agreement");
+        System.err.println("CC: Calling StorageProxy.describeSchemaVersions...");
         return StorageProxy.describeSchemaVersions();
     }
 
@@ -2294,6 +2305,7 @@ public class CassandraServer implements Cassandra.Iface
             }
 
             ThriftClientState cState = state();
+            System.err.println("CC: Processing CQL query...");
             return ClientState.getCQLQueryHandler().process(queryString,
                                                             cState.getQueryState(),
                                                             QueryOptions.fromThrift(ThriftConversion.fromThrift(cLevel),
@@ -2366,6 +2378,7 @@ public class CassandraServer implements Cassandra.Iface
                                                                 itemId));
             logger.trace("Retrieved prepared statement #{} with {} bind markers", itemId, prepared.statement.getBoundTerms());
 
+            System.err.println("CC: Processing prepared CQL query...");
             return ClientState.getCQLQueryHandler().processPrepared(prepared.statement,
                                                                     cState.getQueryState(),
                                                                     QueryOptions.fromThrift(ThriftConversion.fromThrift(cLevel), bindVariables),
