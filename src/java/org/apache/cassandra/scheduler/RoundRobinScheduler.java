@@ -52,6 +52,8 @@ public class RoundRobinScheduler implements IRequestScheduler
 
     public RoundRobinScheduler(RequestSchedulerOptions options)
     {
+        System.err.println("CC: Constructing RoundRobinScheduler...");
+
         defaultWeight = options.default_weight;
         weights = options.weights;
 
@@ -69,6 +71,8 @@ public class RoundRobinScheduler implements IRequestScheduler
                 }
             }
         };
+
+        System.err.println("CC: Starting RoundRobinScheduler");
         Thread scheduler = new Thread(runnable, "REQUEST-SCHEDULER");
         scheduler.start();
         logger.info("Started the RoundRobin Request Scheduler");
@@ -78,12 +82,14 @@ public class RoundRobinScheduler implements IRequestScheduler
     {
         WeightedQueue weightedQueue = getWeightedQueue(id);
 
+        System.err.println("CC: Enqueuing to RoundRobinScheduler...");
+
         try
         {
             queueSize.release();
             try
             {
-                System.err.println("CARTER TEST: Enqueuing Request Thread");
+                System.err.println("CC: Enqueuing Request Thread...");
                 weightedQueue.put(t, timeoutMS);
                 // the scheduler will release us when a slot is available
             }
@@ -101,11 +107,14 @@ public class RoundRobinScheduler implements IRequestScheduler
 
     public void release()
     {
+        System.err.println("CC: Releasing from RoundRobinScheduler...");
         taskCount.release();
     }
 
     private void schedule()
     {
+        System.err.println("CC: Scheduling in RoundRobinScheduler...");
+
         queueSize.acquireUninterruptibly();
         for (Map.Entry<String,WeightedQueue> request : queues.entrySet())
         {
@@ -132,6 +141,8 @@ public class RoundRobinScheduler implements IRequestScheduler
      */
     private WeightedQueue getWeightedQueue(String id)
     {
+        System.err.println("CC: Retrieving WeightedQueue...");
+
         WeightedQueue weightedQueue = queues.get(id);
         if (weightedQueue != null)
             // queue existed

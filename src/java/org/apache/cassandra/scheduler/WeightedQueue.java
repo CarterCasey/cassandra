@@ -35,6 +35,8 @@ class WeightedQueue
     private final SynchronousQueue<Entry> queue;
     public WeightedQueue(String key, int weight)
     {
+        System.err.println("CC: Constructing WeightedQueue...");
+
         this.key = key;
         this.weight = weight;
         this.queue = new SynchronousQueue<Entry>(true);
@@ -43,12 +45,16 @@ class WeightedQueue
 
     public void put(Thread t, long timeoutMS) throws InterruptedException, TimeoutException
     {
+        System.err.println("CC: Putting new thread into WeightedQueue...");
+
         if (!queue.offer(new WeightedQueue.Entry(t), timeoutMS, TimeUnit.MILLISECONDS))
             throw new TimeoutException("Failed to acquire request scheduler slot for '" + key + "'");
     }
 
     public Thread poll()
     {
+        System.err.println("CC: Polling WeightedQueue...");
+
         Entry e = queue.poll();
         if (e == null)
             return null;

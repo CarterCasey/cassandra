@@ -43,13 +43,13 @@ public class QueryProcessor implements QueryHandler
 {
     private static Object retParse(Object ret, String file_name, Integer line_number, String function_name)
     {
-        String output = String.format("CC: Returning from %s at line %d in %s...\n", function_name, line_number, file_name);
-        String tabs = "\t";
-        for (StackTraceElement caller : Thread.currentThread().getStackTrace()) {
-            output += String.format("CC:%sCalled from %s...\n", tabs, caller);
-        }
+        // String output = String.format("CC: Returning from %s at line %d in %s...\n", function_name, line_number, file_name);
+        // String tabs = "\t";
+        // for (StackTraceElement caller : Thread.currentThread().getStackTrace()) {
+        //     output += String.format("CC:%sCalled from %s...\n", tabs, caller);
+        // }
 
-        System.err.print(output);
+        // System.err.print(output);
 
         return ret;
     }
@@ -102,7 +102,7 @@ public class QueryProcessor implements QueryHandler
                              {
                                  public void onEviction(MD5Digest md5Digest, ParsedStatement.Prepared prepared)
                                  {
-                                        System.err.println("CC: Eviction Occurring...");
+                                     // System.err.println("CC: Eviction Occurring...");
                                      metrics.preparedStatementsEvicted.inc();
                                      lastMinuteEvictionsCount.incrementAndGet();
                                  }
@@ -115,7 +115,7 @@ public class QueryProcessor implements QueryHandler
                                    {
                                        public void onEviction(Integer integer, ParsedStatement.Prepared prepared)
                                        {
-                                            System.err.println("CC: Eviction Occurring...");
+                                           // System.err.println("CC: Eviction Occurring...");
                                            metrics.preparedStatementsEvicted.inc();
                                            lastMinuteEvictionsCount.incrementAndGet();
                                        }
@@ -126,7 +126,7 @@ public class QueryProcessor implements QueryHandler
         {
             public void run()
             {
-                System.err.println("CC: In Scheduled Tasks, running...");
+                // System.err.println("CC: In Scheduled Tasks, running...");
                 long count = lastMinuteEvictionsCount.getAndSet(0);
                 if (count > 0)
                     logger.info("{} prepared statements discarded in the last minute because cache limit reached ({} bytes)",
@@ -163,7 +163,7 @@ public class QueryProcessor implements QueryHandler
 
     private QueryProcessor()
     {
-        System.err.println("CC: Registering new MigrationManager from QueryProcessor...");
+        // System.err.println("CC: Registering new MigrationManager from QueryProcessor...");
         MigrationManager.instance.register(new MigrationSubscriber());
     }
 

@@ -583,7 +583,7 @@ public class CassandraDaemon
             try
             {
                 MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-                System.err.println("Registering Managed Bean for Native Access...");
+                System.err.println("CC: Registering Managed Bean for Native Access...");
                 mbs.registerMBean(new StandardMBean(new NativeAccess(), NativeAccessMBean.class), new ObjectName(MBEAN_NAME));
             }
             catch (Exception e)

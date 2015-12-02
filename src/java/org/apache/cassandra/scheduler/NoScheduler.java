@@ -27,11 +27,11 @@ import org.apache.cassandra.config.RequestSchedulerOptions;
 public class NoScheduler implements IRequestScheduler
 {
 
-    public NoScheduler(RequestSchedulerOptions options) {}
+    public NoScheduler(RequestSchedulerOptions options) { System.err.println("CC: Created NoScheduler with options..."); }
 
-    public NoScheduler() {}
+    public NoScheduler() { System.err.println("CC: Created NoScheduler..."); }
 
-    public void queue(Thread t, String id, long timeoutMS) {}
+    public void queue(Thread t, String id, long timeoutMS) { System.err.println("CC: Added to NoScheduler queue..."); }
 
-    public void release() {}
+    public void release() { System.err.println("CC: Released NoScheduler queue..."); }
 }
