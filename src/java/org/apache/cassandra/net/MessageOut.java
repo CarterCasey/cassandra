@@ -47,6 +47,11 @@ public class MessageOut<T>
     public final IVersionedSerializer<T> serializer;
     public final Map<String, byte[]> parameters;
 
+    // Implementing duplicate aware messaging
+    private Boolean duplicate;
+    public Boolean isDuplicate() { return duplicate; }
+    public void setDuplicate(Boolean is_duplicate) { duplicate = is_duplicate; }
+
     // we do support messages that just consist of a verb
     public MessageOut(MessagingService.Verb verb)
     {

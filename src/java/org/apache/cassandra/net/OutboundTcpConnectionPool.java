@@ -41,6 +41,8 @@ public class OutboundTcpConnectionPool
     private final CountDownLatch started;
     public final OutboundTcpConnection cmdCon;
     public final OutboundTcpConnection ackCon;
+    public final OutboundTcpConnection cmdConDup;
+    public final OutboundTcpConnection ackConDup;
     // pointer to the reset Address.
     private InetAddress resetEndpoint;
     private ConnectionMetrics metrics;
@@ -53,6 +55,10 @@ public class OutboundTcpConnectionPool
 
         cmdCon = new OutboundTcpConnection(this);
         ackCon = new OutboundTcpConnection(this);
+
+        // Duplicate connections
+        cmdConDup = new OutboundTcpConnection(this, true);
+        ackConDup = new OutboundTcpConnection(this, true);
     }
 
     /**
@@ -63,19 +69,19 @@ public class OutboundTcpConnectionPool
     {
         Stage stage = msg.getStage();
         return stage == Stage.REQUEST_RESPONSE || stage == Stage.INTERNAL_RESPONSE || stage == Stage.GOSSIP
-               ? ackCon
-               : cmdCon;
+               ? ((!msg.isDuplicate()) ? ackCon : ackConDup)
+               : ((!msg.isDuplicate()) ? cmdCon : cmdConDup);
     }
 
     void reset()
     {
-        for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon })
+        for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon, cmdConDup, ackConDup })
             conn.closeSocket(false);
     }
 
     public void resetToNewerVersion(int version)
     {
-        for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon })
+        for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon, cmdConDup, ackConDup })
         {
             if (version > conn.getTargetVersion())
                 conn.softCloseSocket();
@@ -91,7 +97,7 @@ public class OutboundTcpConnectionPool
     {
         SystemKeyspace.updatePreferredIP(id, remoteEP);
         resetEndpoint = remoteEP;
-        for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon })
+        for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon, cmdConDup, ackConDup })
             conn.softCloseSocket();
 
         // release previous metrics and create new one with reset address
@@ -119,19 +125,38 @@ public class OutboundTcpConnectionPool
         return newSocket(endPoint());
     }
 
+    public Socket newDuplicate() throws IOException
+    {
+        return newDuplicate(endPoint());
+    }
+
+    public static Socket newDuplicate(InetAddress endpoint) throws IOException
+    {
+        return newSocket(endpoint, true);
+    }
+
     public static Socket newSocket(InetAddress endpoint) throws IOException
+    {
+        return newSocket(endpoint, false);
+    }
+
+    public static Socket newSocket(InetAddress endpoint, Boolean handles_duplicates) throws IOException
     {
         // zero means 'bind on any available port.'
         if (isEncryptedChannel(endpoint))
         {
+            Integer ssl_port = (!handles_duplicates) ? DatabaseDescriptor.getSSLStoragePort() : DatabaseDescriptor.getSSLDuplicatePort();
+
             if (Config.getOutboundBindAny())
-                return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.getSSLStoragePort());
+                return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint, ssl_port);
             else
-                return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.getSSLStoragePort(), FBUtilities.getLocalAddress(), 0);
+                return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint, ssl_port, FBUtilities.getLocalAddress(), 0);
         }
         else
         {
-            Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, DatabaseDescriptor.getStoragePort())).socket();
+            Integer port = (!handles_duplicates) ? DatabaseDescriptor.getStoragePort() : DatabaseDescriptor.getDuplicatePort();
+
+            Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, port)).socket();
             if (Config.getOutboundBindAny() && !socket.isBound())
                 socket.bind(new InetSocketAddress(FBUtilities.getLocalAddress(), 0));
             return socket;
@@ -173,6 +198,9 @@ public class OutboundTcpConnectionPool
         cmdCon.start();
         ackCon.start();
 
+        cmdConDup.start();
+        ackConDup.start();
+
         metrics = new ConnectionMetrics(id, this);
         
         started.countDown();
@@ -205,7 +233,11 @@ public class OutboundTcpConnectionPool
             ackCon.closeSocket(true);
         if (cmdCon != null)
             cmdCon.closeSocket(true);
-        
+        if (ackConDup != null)
+            ackConDup.closeSocket(true);
+        if (cmdConDup != null)
+            cmdConDup.closeSocket(true);
+
         metrics.release();
     }
 }

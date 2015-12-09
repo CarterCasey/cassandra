@@ -48,6 +48,9 @@ public class IncomingTcpConnection extends Thread implements Closeable
     private final boolean compressed;
     private final Socket socket;
     private final Set<Closeable> group;
+
+    private final Boolean handles_duplicates;
+
     public InetAddress from;
 
     public IncomingTcpConnection(int version, boolean compressed, Socket socket, Set<Closeable> group)
@@ -57,6 +60,12 @@ public class IncomingTcpConnection extends Thread implements Closeable
         this.compressed = compressed;
         this.socket = socket;
         this.group = group;
+
+
+        Integer port = socket.getLocalPort();
+        this.handles_duplicates = port == DatabaseDescriptor.getDuplicatePort()
+                               || port == DatabaseDescriptor.getSSLDuplicatePort();
+
         if (DatabaseDescriptor.getInternodeRecvBufferSize() != null)
         {
             try
@@ -196,6 +205,8 @@ public class IncomingTcpConnection extends Thread implements Closeable
             // callback expired; nothing to do
             return null;
         }
+        message.setDuplicate(handles_duplicates);
+
         if (version <= MessagingService.current_version)
         {
             MessagingService.instance().receive(message, id, timestamp, isCrossNodeTimestamp);

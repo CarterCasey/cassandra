@@ -43,6 +43,11 @@ public class MessageIn<T>
     public final MessagingService.Verb verb;
     public final int version;
 
+    // Implementing duplicate aware messaging
+    private Boolean duplicate;
+    public Boolean isDuplicate() { return duplicate; }
+    public void setDuplicate(Boolean is_duplicate) { duplicate = is_duplicate; }
+
     private MessageIn(InetAddress from, T payload, Map<String, byte[]> parameters, MessagingService.Verb verb, int version)
     {
         this.from = from;

@@ -931,14 +931,29 @@ public class DatabaseDescriptor
         return conf.max_streaming_retries;
     }
 
+    public static int getDuplicateCount()
+    {
+        return Integer.parseInt(System.getProperty("cassandra.duplicate_count", conf.duplicate_count.toString()));
+    }
+
     public static int getStoragePort()
     {
         return Integer.parseInt(System.getProperty("cassandra.storage_port", conf.storage_port.toString()));
     }
 
+    public static int getDuplicatePort()
+    {
+        return Integer.parseInt(System.getProperty("cassadra.duplicate_port", conf.duplicate_port.toString()));
+    }
+
     public static int getSSLStoragePort()
     {
         return Integer.parseInt(System.getProperty("cassandra.ssl_storage_port", conf.ssl_storage_port.toString()));
+    }
+
+    public static int getSSLDuplicatePort()
+    {
+        return Integer.parseInt(System.getProperty("cassandra.ssl_duplicate_port", conf.ssl_duplicate_port.toString()));
     }
 
     public static int getRpcPort()

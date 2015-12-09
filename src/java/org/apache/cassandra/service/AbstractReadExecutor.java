@@ -20,6 +20,7 @@ package org.apache.cassandra.service;
 import java.net.InetAddress;
 import java.util.Collection;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Iterables;
@@ -31,6 +32,7 @@ import org.apache.cassandra.concurrent.StageManager;
 import org.apache.cassandra.config.CFMetaData.SpeculativeRetry.RetryType;
 import org.apache.cassandra.config.Schema;
 import org.apache.cassandra.config.ReadRepairDecision;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.ReadCommand;
@@ -61,14 +63,21 @@ public abstract class AbstractReadExecutor
 
     protected final ReadCommand command;
     protected final List<InetAddress> targetReplicas;
+    protected final List<InetAddress> duplicateReplicas;
     protected final RowDigestResolver resolver;
     protected final ReadCallback<ReadResponse, Row> handler;
     protected final TraceState traceState;
 
     AbstractReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel, List<InetAddress> targetReplicas)
     {
+        this(command, consistencyLevel, targetReplicas, new ArrayList<InetAddress>());
+    }
+
+    AbstractReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel, List<InetAddress> targetReplicas, List<InetAddress> duplicateReplicas)
+    {
         this.command = command;
         this.targetReplicas = targetReplicas;
+        this.duplicateReplicas = duplicateReplicas;
         resolver = new RowDigestResolver(command.ksName, command.key);
         traceState = Tracing.instance.get();
         handler = new ReadCallback<>(resolver, consistencyLevel, command, targetReplicas);
@@ -82,7 +91,11 @@ public abstract class AbstractReadExecutor
     protected void makeDataRequests(Iterable<InetAddress> endpoints)
     {
         makeRequests(command, endpoints);
+    }
 
+    protected void makeDuplicateDataRequests(Iterable<InetAddress> endpoints)
+    {
+        makeDuplicateRequests(command, endpoints);
     }
 
     protected void makeDigestRequests(Iterable<InetAddress> endpoints)
@@ -90,7 +103,23 @@ public abstract class AbstractReadExecutor
         makeRequests(command.copy().setIsDigestQuery(true), endpoints);
     }
 
+    // CC: Currently unused.
+    protected void makeDuplicateDigestRequests(Iterable<InetAddress> endpoints)
+    {
+        makeDuplicateRequests(command.copy().setIsDigestQuery(true), endpoints);
+    }
+
     private void makeRequests(ReadCommand readCommand, Iterable<InetAddress> endpoints)
+    {
+        makeRequests(readCommand, endpoints, false);
+    }
+
+    private void makeDuplicateRequests(ReadCommand readCommand, Iterable<InetAddress> endpoints)
+    {
+        makeRequests(readCommand, endpoints, true);
+    }
+
+    private void makeRequests(ReadCommand readCommand, Iterable<InetAddress> endpoints, Boolean is_duplicate)
     {
         MessageOut<ReadCommand> message = null;
         boolean hasLocalEndpoint = false;
@@ -106,8 +135,10 @@ public abstract class AbstractReadExecutor
             if (traceState != null)
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
             logger.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
-            if (message == null)
+            if (message == null) {
                 message = readCommand.createMessage();
+                message.setDuplicate(is_duplicate);
+            }
             MessagingService.instance().sendRR(message, endpoint, handler);
         }
 
@@ -155,6 +186,9 @@ public abstract class AbstractReadExecutor
         List<InetAddress> allReplicas = StorageProxy.getLiveSortedEndpoints(keyspace, command.key);
         ReadRepairDecision repairDecision = Schema.instance.getCFMetaData(command.ksName, command.cfName).newReadRepairDecision();
         List<InetAddress> targetReplicas = consistencyLevel.filterForQuery(keyspace, allReplicas, repairDecision);
+        List<InetAddress> duplicateReplicas = allReplicas.subList(1, (allReplicas.size() < DatabaseDescriptor.getDuplicateCount())
+                                                                     ? allReplicas.size()
+                                                                     : DatabaseDescriptor.getDuplicateCount());
 
         // Throw UAE early if we don't have enough replicas.
         consistencyLevel.assureSufficientLiveNodes(keyspace, targetReplicas);
@@ -162,7 +196,7 @@ public abstract class AbstractReadExecutor
         // Fat client. Speculating read executors need access to cfs metrics and sampled latency, and fat clients
         // can't provide that. So, for now, fat clients will always use NeverSpeculatingReadExecutor.
         if (StorageService.instance.isClientMode())
-            return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas);
+            return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas, duplicateReplicas);
 
         if (repairDecision != ReadRepairDecision.NONE)
         {
@@ -175,14 +209,14 @@ public abstract class AbstractReadExecutor
 
         // Speculative retry is disabled *OR* there are simply no extra replicas to speculate.
         if (retryType == RetryType.NONE || consistencyLevel.blockFor(keyspace) == allReplicas.size())
-            return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas);
+            return new NeverSpeculatingReadExecutor(command, consistencyLevel, targetReplicas, duplicateReplicas);
 
         if (targetReplicas.size() == allReplicas.size())
         {
             // CL.ALL, RRD.GLOBAL or RRD.DC_LOCAL and a single-DC.
             // We are going to contact every node anyway, so ask for 2 full data requests instead of 1, for redundancy
             // (same amount of requests in total, but we turn 1 digest request into a full blown data request).
-            return new AlwaysSpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas);
+            return new AlwaysSpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas, duplicateReplicas);
         }
 
         // RRD.NONE or RRD.DC_LOCAL w/ multiple DCs.
@@ -203,9 +237,9 @@ public abstract class AbstractReadExecutor
         targetReplicas.add(extraReplica);
 
         if (retryType == RetryType.ALWAYS)
-            return new AlwaysSpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas);
+            return new AlwaysSpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas, duplicateReplicas);
         else // PERCENTILE or CUSTOM.
-            return new SpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas);
+            return new SpeculatingReadExecutor(cfs, command, consistencyLevel, targetReplicas, duplicateReplicas);
     }
 
     private static class NeverSpeculatingReadExecutor extends AbstractReadExecutor
@@ -215,9 +249,15 @@ public abstract class AbstractReadExecutor
             super(command, consistencyLevel, targetReplicas);
         }
 
+        public NeverSpeculatingReadExecutor(ReadCommand command, ConsistencyLevel consistencyLevel, List<InetAddress> targetReplicas, List<InetAddress> duplicateReplicas)
+        {
+            super(command, consistencyLevel, targetReplicas, duplicateReplicas);
+        }
+
         public void executeAsync()
         {
             makeDataRequests(targetReplicas.subList(0, 1));
+            makeDuplicateDataRequests(duplicateReplicas);
             if (targetReplicas.size() > 1)
                 makeDigestRequests(targetReplicas.subList(1, targetReplicas.size()));
         }
@@ -247,6 +287,16 @@ public abstract class AbstractReadExecutor
             this.cfs = cfs;
         }
 
+        public SpeculatingReadExecutor(ColumnFamilyStore cfs,
+                                       ReadCommand command,
+                                       ConsistencyLevel consistencyLevel,
+                                       List<InetAddress> targetReplicas,
+                                       List<InetAddress> duplicateReplicas)
+        {
+            super(command, consistencyLevel, targetReplicas, duplicateReplicas);
+            this.cfs = cfs;
+        }
+
         public void executeAsync()
         {
             // if CL + RR result in covering all replicas, getReadExecutor forces AlwaysSpeculating.  So we know
@@ -259,6 +309,8 @@ public abstract class AbstractReadExecutor
                 // preferred by the snitch, we do an extra data read to start with against a replica more
                 // likely to reply; better to let RR fail than the entire query.
                 makeDataRequests(initialReplicas.subList(0, 2));
+                if (duplicateReplicas.size() > 1)
+                    makeDuplicateDataRequests(duplicateReplicas.subList(1, duplicateReplicas.size()));
                 if (initialReplicas.size() > 2)
                     makeDigestRequests(initialReplicas.subList(2, initialReplicas.size()));
             }
@@ -267,6 +319,7 @@ public abstract class AbstractReadExecutor
                 // not doing read repair; all replies are important, so it doesn't matter which nodes we
                 // perform data reads against vs digest.
                 makeDataRequests(initialReplicas.subList(0, 1));
+                makeDuplicateDataRequests(duplicateReplicas);
                 if (initialReplicas.size() > 1)
                     makeDigestRequests(initialReplicas.subList(1, initialReplicas.size()));
             }
@@ -317,6 +370,16 @@ public abstract class AbstractReadExecutor
             this.cfs = cfs;
         }
 
+        public AlwaysSpeculatingReadExecutor(ColumnFamilyStore cfs,
+                                             ReadCommand command,
+                                             ConsistencyLevel consistencyLevel,
+                                             List<InetAddress> targetReplicas,
+                                             List<InetAddress> duplicateReplicas)
+        {
+            super(command, consistencyLevel, targetReplicas, duplicateReplicas);
+            this.cfs = cfs;
+        }
+
         public void maybeTryAdditionalReplicas()
         {
             // no-op
@@ -331,6 +394,14 @@ public abstract class AbstractReadExecutor
         public void executeAsync()
         {
             makeDataRequests(targetReplicas.subList(0, targetReplicas.size() > 1 ? 2 : 1));
+
+            if (targetReplicas.size() > 1) {
+                if (duplicateReplicas.size() > 1)
+                    makeDuplicateDataRequests(duplicateReplicas.subList(1, duplicateReplicas.size()));
+            } else {
+                makeDuplicateDataRequests(duplicateReplicas);
+            }
+
             if (targetReplicas.size() > 2)
                 makeDigestRequests(targetReplicas.subList(2, targetReplicas.size()));
             cfs.metric.speculativeRetries.inc();

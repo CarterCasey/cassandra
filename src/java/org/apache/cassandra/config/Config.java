@@ -103,8 +103,12 @@ public class Config
     public Integer memtable_offheap_space_in_mb;
     public Float memtable_cleanup_threshold = null;
 
+    public Integer duplicate_count = 1;
+
     public Integer storage_port = 7000;
+    public Integer duplicate_port = 7002;
     public Integer ssl_storage_port = 7001;
+    public Integer ssl_duplicate_port = 7003;
     public String listen_address;
     public String listen_interface;
     public Boolean listen_interface_prefer_ipv6 = false;

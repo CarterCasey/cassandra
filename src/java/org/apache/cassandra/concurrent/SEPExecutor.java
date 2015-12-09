@@ -19,7 +19,7 @@ package org.apache.cassandra.concurrent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -51,7 +51,7 @@ public class SEPExecutor extends AbstractTracingAwareExecutorService
     final SimpleCondition shutdown = new SimpleCondition();
 
     // TODO: see if other queue implementations might improve throughput
-    protected final ConcurrentLinkedQueue<FutureTask<?>> tasks = new ConcurrentLinkedQueue<>();
+    protected final PriorityBlockingQueue<FutureTask<?>> tasks = new PriorityBlockingQueue<>();
 
     SEPExecutor(SharedExecutorPool pool, int maxWorkers, int maxTasksQueued)
     {

@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -119,9 +119,10 @@ public class OutboundTcpConnection extends Thread
 
     static final int LZ4_HASH_SEED = 0x9747b28c;
 
-    private final BlockingQueue<QueuedMessage> backlog = new LinkedBlockingQueue<>();
+    private final PriorityBlockingQueue<QueuedMessage> backlog = new PriorityBlockingQueue<>();
 
     private final OutboundTcpConnectionPool poolReference;
+    private final Boolean handles_duplicates;
 
     private final CoalescingStrategy cs;
     private DataOutputStreamPlus out;
@@ -133,8 +134,14 @@ public class OutboundTcpConnection extends Thread
 
     public OutboundTcpConnection(OutboundTcpConnectionPool pool)
     {
+        this(pool, false);
+    }
+
+    public OutboundTcpConnection(OutboundTcpConnectionPool pool, Boolean handles_duplicates)
+    {
         super("MessagingService-Outgoing-" + pool.endPoint());
         this.poolReference = pool;
+        this.handles_duplicates = handles_duplicates;
         cs = newCoalescingStrategy(pool.endPoint().getHostAddress());
     }
 
@@ -149,14 +156,14 @@ public class OutboundTcpConnection extends Thread
     {
         if (backlog.size() > 1024)
             expireMessages();
-        try
-        {
-            backlog.put(new QueuedMessage(message, id));
-        }
-        catch (InterruptedException e)
-        {
-            throw new AssertionError(e);
-        }
+        // try
+        // {
+        backlog.put(new QueuedMessage(message, id));
+        // }
+        // catch (InterruptedException e)
+        // {
+        //     throw new AssertionError(e);
+        // }
     }
 
     void closeSocket(boolean destroyThread)
@@ -297,14 +304,14 @@ public class OutboundTcpConnection extends Thread
                 // to retry after re-connecting.  See CASSANDRA-5393
                 if (qm.shouldRetry())
                 {
-                    try
-                    {
-                        backlog.put(new RetriedQueuedMessage(qm));
-                    }
-                    catch (InterruptedException e1)
-                    {
-                        throw new AssertionError(e1);
-                    }
+                    // try
+                    // {
+                    backlog.put(new RetriedQueuedMessage(qm));
+                    // }
+                    // catch (InterruptedException e1)
+                    // {
+                    //     throw new AssertionError(e1);
+                    // }
                 }
             }
             else

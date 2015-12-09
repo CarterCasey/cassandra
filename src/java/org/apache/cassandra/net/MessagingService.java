@@ -447,6 +447,50 @@ public final class MessagingService implements MessagingServiceMBean
         listenGate.signalAll();
     }
 
+    public ServerSocket getUnencryptedServerSocket(InetAddress localEp, Integer port) throws ConfigurationException
+    {
+        ServerSocketChannel serverChannel = null;
+        try
+        {
+            serverChannel = ServerSocketChannel.open();
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+        ServerSocket socket = serverChannel.socket();
+        try
+        {
+            socket.setReuseAddress(true);
+        }
+        catch (SocketException e)
+        {
+            throw new ConfigurationException("Insufficient permissions to setReuseAddress", e);
+        }
+        InetSocketAddress address = new InetSocketAddress(localEp, port);
+        try
+        {
+            socket.bind(address,500);
+        }
+        catch (BindException e)
+        {
+            if (e.getMessage().contains("in use"))
+                throw new ConfigurationException(address + " is in use by another process.  Change listen_address:storage_port in cassandra.yaml to values that do not conflict with other services");
+            else if (e.getMessage().contains("Cannot assign requested address"))
+                throw new ConfigurationException("Unable to bind to address " + address
+                                                 + ". Set listen_address in cassandra.yaml to an interface you can bind to, e.g., your private IP address on EC2");
+            else
+                throw new RuntimeException(e);
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
+        logger.info("Starting Messaging Service on port {}", port);
+
+        return socket;
+    }
+
     private List<ServerSocket> getServerSockets(InetAddress localEp) throws ConfigurationException
     {
         final List<ServerSocket> ss = new ArrayList<ServerSocket>(2);
@@ -455,6 +499,7 @@ public final class MessagingService implements MessagingServiceMBean
             try
             {
                 ss.add(SSLFactory.getServerSocket(DatabaseDescriptor.getServerEncryptionOptions(), localEp, DatabaseDescriptor.getSSLStoragePort()));
+                ss.add(SSLFactory.getServerSocket(DatabaseDescriptor.getServerEncryptionOptions(), localEp, DatabaseDescriptor.getSSLDuplicatePort()));
             }
             catch (IOException e)
             {
@@ -462,49 +507,13 @@ public final class MessagingService implements MessagingServiceMBean
             }
             // setReuseAddress happens in the factory.
             logger.info("Starting Encrypted Messaging Service on SSL port {}", DatabaseDescriptor.getSSLStoragePort());
+            logger.info("Starting Encrypted Duplicate Messaging Service on SSL port {}", DatabaseDescriptor.getSSLDuplicatePort());
         }
 
         if (DatabaseDescriptor.getServerEncryptionOptions().internode_encryption != ServerEncryptionOptions.InternodeEncryption.all)
         {
-            ServerSocketChannel serverChannel = null;
-            try
-            {
-                serverChannel = ServerSocketChannel.open();
-            }
-            catch (IOException e)
-            {
-                throw new RuntimeException(e);
-            }
-            ServerSocket socket = serverChannel.socket();
-            try
-            {
-                socket.setReuseAddress(true);
-            }
-            catch (SocketException e)
-            {
-                throw new ConfigurationException("Insufficient permissions to setReuseAddress", e);
-            }
-            InetSocketAddress address = new InetSocketAddress(localEp, DatabaseDescriptor.getStoragePort());
-            try
-            {
-                socket.bind(address,500);
-            }
-            catch (BindException e)
-            {
-                if (e.getMessage().contains("in use"))
-                    throw new ConfigurationException(address + " is in use by another process.  Change listen_address:storage_port in cassandra.yaml to values that do not conflict with other services");
-                else if (e.getMessage().contains("Cannot assign requested address"))
-                    throw new ConfigurationException("Unable to bind to address " + address
-                                                     + ". Set listen_address in cassandra.yaml to an interface you can bind to, e.g., your private IP address on EC2");
-                else
-                    throw new RuntimeException(e);
-            }
-            catch (IOException e)
-            {
-                throw new RuntimeException(e);
-            }
-            logger.info("Starting Messaging Service on port {}", DatabaseDescriptor.getStoragePort());
-            ss.add(socket);
+            ss.add(getUnencryptedServerSocket(localEp, DatabaseDescriptor.getStoragePort()));
+            ss.add(getUnencryptedServerSocket(localEp, DatabaseDescriptor.getDuplicatePort()));
         }
         return ss;
     }

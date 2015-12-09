@@ -26,6 +26,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+// Implementing priority queueing
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,6 +114,38 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         return new FutureTask<>(callable);
     }
 
+    protected <T> FutureTask<T> newDuplicateTaskFor(Runnable runnable, T result)
+    {
+        return newDuplicateTaskFor(runnable, result, Tracing.instance.get());
+    }
+
+    protected <T> FutureTask<T> newDuplicateTaskFor(Runnable runnable, T result, TraceState traceState)
+    {
+        if (traceState != null)
+        {
+            if (runnable instanceof TraceSessionDuplicateTask)
+                return (TraceSessionDuplicateTask<T>) runnable;
+            return new TraceSessionDuplicateTask<T>(runnable, result, traceState);
+        }
+        if (runnable instanceof DuplicateTask)
+            return (DuplicateTask<T>) runnable;
+        return new DuplicateTask<>(runnable, result);
+    }
+
+    protected <T> FutureTask<T> newDuplicateTaskFor(Callable<T> callable)
+    {
+        if (isTracing())
+        {
+            if (callable instanceof TraceSessionDuplicateTask)
+                return (TraceSessionDuplicateTask<T>) callable;
+            return new TraceSessionDuplicateTask<T>(callable, Tracing.instance.get());
+        }
+        if (callable instanceof DuplicateTask)
+            return (DuplicateTask<T>) callable;
+        return new DuplicateTask<>(callable);
+    }
+
+
     private class TraceSessionFutureTask<T> extends FutureTask<T>
     {
         private final TraceState state;
@@ -142,19 +177,55 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         }
     }
 
-    class FutureTask<T> extends SimpleCondition implements Future<T>, Runnable
+    class TraceSessionDuplicateTask<T> extends TraceSessionFutureTask<T>
+    {
+        public TraceSessionDuplicateTask(Callable<T> c, TraceState state)
+        {
+            super(c, state);
+
+            priority = 2;
+        }
+
+        public TraceSessionDuplicateTask(Runnable r, T result, TraceState state)
+        {
+            super(r, result, state);
+
+            priority = 2;
+        }   
+    }
+
+    private static AtomicInteger sequence = new AtomicInteger(0);
+
+    class FutureTask<T> extends SimpleCondition implements Future<T>, Runnable, Comparable<FutureTask<T>>
     {
         private boolean failure;
         private Object result = this;
         private final Callable<T> callable;
 
+        // Implementing priority queuing
+        protected Integer seq_number;
+        protected Integer priority;
+
         public FutureTask(Callable<T> callable)
         {
             this.callable = callable;
+
+            seq_number = sequence.incrementAndGet();
+
+            priority = 1;
         }
+
         public FutureTask(Runnable runnable, T result)
         {
             this(Executors.callable(runnable, result));
+        }
+
+        public int compareTo(FutureTask<T> other)
+        {
+            return (priority != other.priority)
+                 ?  priority  - other.priority
+                 :  seq_number - other.seq_number
+            ;
         }
 
         public void run()
@@ -211,6 +282,23 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         }
     }
 
+    class DuplicateTask<T> extends FutureTask
+    {
+        public DuplicateTask(Callable<T> c)
+        {
+            super(c);
+
+            priority = 2;
+        }
+
+        public DuplicateTask(Runnable r, T result)
+        {
+            super(r, result);
+
+            priority = 2;
+        }
+    }
+
     private <T> FutureTask<T> submit(FutureTask<T> task)
     {
         addTask(task);
@@ -225,5 +313,16 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
     public void execute(Runnable command, TraceState state)
     {
         addTask(newTaskFor(command, null, state));
+    }
+
+
+    public void executeDuplicate(Runnable command)
+    {
+        addTask(newDuplicateTaskFor(command, null));
+    }
+
+    public void executeDuplicate(Runnable command, TraceState state)
+    {
+        addTask(newDuplicateTaskFor(command, null, state));
     }
 }
