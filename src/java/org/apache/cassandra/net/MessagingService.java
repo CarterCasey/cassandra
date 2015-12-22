@@ -546,6 +546,8 @@ public final class MessagingService implements MessagingServiceMBean
 
     public OutboundTcpConnectionPool getConnectionPool(InetAddress to)
     {
+        System.err.println("CC: Checking for OutboundTcpConnectionPool");
+
         OutboundTcpConnectionPool cp = connectionManagers.get(to);
         if (cp == null)
         {

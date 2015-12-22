@@ -116,6 +116,8 @@ public abstract class AbstractReadExecutor
 
     private void makeDuplicateRequests(ReadCommand readCommand, Iterable<InetAddress> endpoints)
     {
+        System.err.println("CC: Making duplicate requests");
+
         makeRequests(readCommand, endpoints, true);
     }
 
@@ -186,7 +188,9 @@ public abstract class AbstractReadExecutor
         List<InetAddress> allReplicas = StorageProxy.getLiveSortedEndpoints(keyspace, command.key);
         ReadRepairDecision repairDecision = Schema.instance.getCFMetaData(command.ksName, command.cfName).newReadRepairDecision();
         List<InetAddress> targetReplicas = consistencyLevel.filterForQuery(keyspace, allReplicas, repairDecision);
-        List<InetAddress> duplicateReplicas = allReplicas.subList(1, (allReplicas.size() < DatabaseDescriptor.getDuplicateCount())
+        
+        //TODO: Changed from 1 to 0 for testing purposes. Must go back for full implementation
+        List<InetAddress> duplicateReplicas = allReplicas.subList(0, (allReplicas.size() < DatabaseDescriptor.getDuplicateCount())
                                                                      ? allReplicas.size()
                                                                      : DatabaseDescriptor.getDuplicateCount());
 

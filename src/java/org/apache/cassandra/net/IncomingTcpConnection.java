@@ -66,6 +66,8 @@ public class IncomingTcpConnection extends Thread implements Closeable
         this.handles_duplicates = port == DatabaseDescriptor.getDuplicatePort()
                                || port == DatabaseDescriptor.getSSLDuplicatePort();
 
+        System.err.println("CC: IncomingTcpConnection handles duplicates - " + this.handles_duplicates);
+
         if (DatabaseDescriptor.getInternodeRecvBufferSize() != null)
         {
             try
@@ -206,6 +208,8 @@ public class IncomingTcpConnection extends Thread implements Closeable
             return null;
         }
         message.setDuplicate(handles_duplicates);
+
+        System.err.println("CC: Received duplicate message");
 
         if (version <= MessagingService.current_version)
         {

@@ -232,6 +232,10 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         {
             try
             {
+                if (priority == 2) {
+                    System.err.println("CC: Running a Duplicate Task");
+                }
+
                 result = callable.call();
             }
             catch (Throwable t)
