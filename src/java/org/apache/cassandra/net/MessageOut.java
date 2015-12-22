@@ -80,6 +80,8 @@ public class MessageOut<T>
         this.payload = payload;
         this.serializer = serializer;
         this.parameters = parameters;
+
+        duplicate = false;
     }
 
     public MessageOut<T> withParameter(String key, byte[] value)

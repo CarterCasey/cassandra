@@ -534,13 +534,19 @@ public class OutboundTcpConnection extends Thread
         }
     }
 
+    private static AtomicInteger sequence = new AtomicInteger(0);
+
     /** messages that have not been retried yet */
-    private static class QueuedMessage implements Coalescable
+    private static class QueuedMessage implements Coalescable, Comparable<QueuedMessage>
     {
         final MessageOut<?> message;
         final int id;
         final long timestampNanos;
         final boolean droppable;
+
+        // implementing priority queuing
+        protected Integer seq_number;
+        protected Integer priority;
 
         QueuedMessage(MessageOut<?> message, int id)
         {
@@ -548,6 +554,9 @@ public class OutboundTcpConnection extends Thread
             this.id = id;
             this.timestampNanos = System.nanoTime();
             this.droppable = MessagingService.DROPPABLE_VERBS.contains(message.verb);
+
+            seq_number = sequence.incrementAndGet();
+            priority = (message.isDuplicate()) ? 2 : 1;
         }
 
         /** don't drop a non-droppable message just because it's timestamp is expired */
@@ -565,6 +574,15 @@ public class OutboundTcpConnection extends Thread
         {
             return timestampNanos;
         }
+
+        public int compareTo(QueuedMessage other)
+        {
+            return (priority != other.priority)
+                 ?  priority  - other.priority
+                 :  seq_number - other.seq_number
+            ;
+        }
+	
     }
 
     private static class RetriedQueuedMessage extends QueuedMessage
