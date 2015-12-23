@@ -68,7 +68,8 @@ public class OutboundTcpConnectionPool
     OutboundTcpConnection getConnection(MessageOut msg)
     {
         Stage stage = msg.getStage();
-        return stage == Stage.REQUEST_RESPONSE || stage == Stage.INTERNAL_RESPONSE || stage == Stage.GOSSIP
+
+        return (stage == Stage.REQUEST_RESPONSE || stage == Stage.INTERNAL_RESPONSE || stage == Stage.GOSSIP)
                ? ((!msg.isDuplicate()) ? ackCon : ackConDup)
                : ((!msg.isDuplicate()) ? cmdCon : cmdConDup);
     }
