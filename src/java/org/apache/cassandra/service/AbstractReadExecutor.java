@@ -116,7 +116,8 @@ public abstract class AbstractReadExecutor
 
     private void makeDuplicateRequests(ReadCommand readCommand, Iterable<InetAddress> endpoints)
     {
-        System.err.println("CC: Making duplicate requests");
+
+	System.err.println("CC: Making Duplicate Requests to " + ((List<InetAddress>)endpoints).size() + " endpoints");
 
         makeRequests(readCommand, endpoints, true);
     }
@@ -126,11 +127,18 @@ public abstract class AbstractReadExecutor
         MessageOut<ReadCommand> message = null;
         boolean hasLocalEndpoint = false;
 
+	System.err.println("CC: Request is duplicate <- " + is_duplicate);
+
         for (InetAddress endpoint : endpoints)
         {
+	    System.err.println("CC: Executing request...");
+
             if (isLocalRequest(endpoint))
             {
                 hasLocalEndpoint = true;
+
+		System.err.println("CC: Local endpoint!!!");
+
                 continue;
             }
 
@@ -141,6 +149,9 @@ public abstract class AbstractReadExecutor
                 message = readCommand.createMessage();
                 message.setDuplicate(is_duplicate);
             }
+
+	    System.err.println("CC: Request is still duplicate <- " + is_duplicate);
+
             MessagingService.instance().sendRR(message, endpoint, handler);
         }
 
@@ -188,8 +199,8 @@ public abstract class AbstractReadExecutor
         List<InetAddress> allReplicas = StorageProxy.getLiveSortedEndpoints(keyspace, command.key);
         ReadRepairDecision repairDecision = Schema.instance.getCFMetaData(command.ksName, command.cfName).newReadRepairDecision();
         List<InetAddress> targetReplicas = consistencyLevel.filterForQuery(keyspace, allReplicas, repairDecision);
-        
-        //TODO: Changed from 1 to 0 for testing purposes. Must go back for full implementation
+
+	// FOR TESTING:                                           v Changed from 1 to 0
         List<InetAddress> duplicateReplicas = allReplicas.subList(0, (allReplicas.size() < DatabaseDescriptor.getDuplicateCount())
                                                                      ? allReplicas.size()
                                                                      : DatabaseDescriptor.getDuplicateCount());
