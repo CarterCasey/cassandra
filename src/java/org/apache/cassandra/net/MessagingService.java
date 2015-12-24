@@ -704,12 +704,8 @@ public final class MessagingService implements MessagingServiceMBean
         if (to.equals(FBUtilities.getBroadcastAddress()))
             logger.trace("Message-to-self {} going over MessagingService", message);
 
-	// System.err.println("CC: Before processing, message is duplicate <- " + message.isDuplicate());
-
         // message sinks are a testing hook
         MessageOut processedMessage = SinkManager.processOutboundMessage(message, id, to);
-
-	// System.err.println("CC: After processing, message is duplicate <- " + message.isDuplicate());
 
         if (processedMessage == null)
         {

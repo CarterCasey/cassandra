@@ -116,9 +116,6 @@ public abstract class AbstractReadExecutor
 
     private void makeDuplicateRequests(ReadCommand readCommand, Iterable<InetAddress> endpoints)
     {
-
-	// System.err.println("CC: Making Duplicate Requests to " + ((List<InetAddress>)endpoints).size() + " endpoints");
-
         makeRequests(readCommand, endpoints, true);
     }
 
@@ -127,22 +124,15 @@ public abstract class AbstractReadExecutor
         MessageOut<ReadCommand> message = null;
         boolean hasLocalEndpoint = false;
 
-	// System.err.println("CC: Request is duplicate <- " + is_duplicate);
-
         for (InetAddress endpoint : endpoints)
         {
-	    // System.err.println("CC: Executing request...");
 
             if (isLocalRequest(endpoint))
             {
                 hasLocalEndpoint = true;
 
-		// System.err.println("CC: Local endpoint. Duplicate: " + is_duplicate);
-
                 continue;
             }
-
-	    System.err.println("CC: Non-local endpoint. Duplicate: " + is_duplicate);
 
             if (traceState != null)
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
@@ -151,8 +141,6 @@ public abstract class AbstractReadExecutor
                 message = readCommand.createMessage();
                 message.setDuplicate(is_duplicate);
             }
-
-	   //  System.err.println("CC: Request is still duplicate <- " + is_duplicate);
 
             MessagingService.instance().sendRR(message, endpoint, handler);
         }

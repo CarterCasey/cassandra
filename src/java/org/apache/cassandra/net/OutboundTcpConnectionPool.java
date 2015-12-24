@@ -126,12 +126,12 @@ public class OutboundTcpConnectionPool
         return newSocket(endPoint());
     }
 
-    public Socket newDuplicate() throws IOException
+    public Socket newDuplicateSocket() throws IOException
     {
-        return newDuplicate(endPoint());
+        return newDuplicateSocket(endPoint());
     }
 
-    public static Socket newDuplicate(InetAddress endpoint) throws IOException
+    public static Socket newDuplicateSocket(InetAddress endpoint) throws IOException
     {
         return newSocket(endpoint, true);
     }

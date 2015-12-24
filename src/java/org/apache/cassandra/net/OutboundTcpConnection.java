@@ -119,10 +119,16 @@ public class OutboundTcpConnection extends Thread
 
     static final int LZ4_HASH_SEED = 0x9747b28c;
 
+
+    // CC: Adding Duplicate Functionality
+
     private final PriorityBlockingQueue<QueuedMessage> backlog = new PriorityBlockingQueue<>();
 
     private final OutboundTcpConnectionPool poolReference;
     private final Boolean handles_duplicates;
+
+    public boolean handlesDuplicates() { return handles_duplicates; }
+
 
     private final CoalescingStrategy cs;
     private DataOutputStreamPlus out;
@@ -383,8 +389,13 @@ public class OutboundTcpConnection extends Thread
             targetVersion = MessagingService.instance().getVersion(poolReference.endPoint());
             try
             {
-                socket = poolReference.newSocket();
+                socket = (!handles_duplicates) ? poolReference.newSocket() : poolReference.newDuplicateSocket();
                 socket.setKeepAlive(true);
+
+
+		if (handles_duplicates) System.err.println("CC: Duplicate connection to " + socket);
+
+
                 if (isLocalDC(poolReference.endPoint()))
                 {
                     socket.setTcpNoDelay(INTRADC_TCP_NODELAY);
