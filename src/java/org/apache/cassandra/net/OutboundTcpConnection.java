@@ -141,10 +141,6 @@ public class OutboundTcpConnection extends Thread
     {
         super("MessagingService-Outgoing-" + pool.endPoint());
 
-
-        System.err.println("CC: Creating OutboundTcpConnection");
-        
-
         this.poolReference = pool;
         this.handles_duplicates = handles_duplicates;
         cs = newCoalescingStrategy(pool.endPoint().getHostAddress());

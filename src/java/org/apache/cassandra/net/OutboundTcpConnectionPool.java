@@ -69,8 +69,6 @@ public class OutboundTcpConnectionPool
     {
         Stage stage = msg.getStage();
 
-        System.err.println("CC: Getting Out Con for " + ((msg.isDuplicate()) ? "duplicate" : "primary") + " message");
-
         return (stage == Stage.REQUEST_RESPONSE || stage == Stage.INTERNAL_RESPONSE || stage == Stage.GOSSIP)
                ? ((!msg.isDuplicate()) ? ackCon : ackConDup)
                : ((!msg.isDuplicate()) ? cmdCon : cmdConDup);
