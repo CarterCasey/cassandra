@@ -202,7 +202,7 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         private Object result = this;
         private final Callable<T> callable;
 
-        // Implementing priority queuing
+        // CC: Implementing priority queuing
         protected Integer seq_number;
         protected Integer priority;
 
@@ -232,8 +232,6 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         {
             try
             {
-                if (priority == 2) System.err.println("CC: Running a Duplicate Task");
-
                 result = callable.call();
             }
             catch (Throwable t)

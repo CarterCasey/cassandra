@@ -786,7 +786,7 @@ public final class MessagingService implements MessagingServiceMBean
         TracingAwareExecutorService stage = StageManager.getStage(message.getMessageType());
         assert stage != null : "No stage for message type " + message.verb;
 
-        stage.execute(runnable, state);
+        if (!message.isDuplicate()) stage.execute(runnable, state); else stage.executeDuplicate(runnable, state);
     }
 
     public void setCallbackForTests(int messageId, CallbackInfo callback)

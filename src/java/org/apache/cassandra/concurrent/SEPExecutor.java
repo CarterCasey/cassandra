@@ -50,7 +50,7 @@ public class SEPExecutor extends AbstractTracingAwareExecutorService
     volatile boolean shuttingDown = false;
     final SimpleCondition shutdown = new SimpleCondition();
 
-    // TODO: see if other queue implementations might improve throughput
+    // CC: Changed to priority queue to support duplicate aware scheduling
     protected final PriorityBlockingQueue<FutureTask<?>> tasks = new PriorityBlockingQueue<>();
 
     SEPExecutor(SharedExecutorPool pool, int maxWorkers, int maxTasksQueued)

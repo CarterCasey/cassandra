@@ -62,7 +62,7 @@ public class MessageDeliveryTask implements Runnable
         try
         {
             verbHandler.doVerb(message, id);
-        }
+	}
         catch (Throwable t)
         {
             if (message.doCallbackOnFailure())

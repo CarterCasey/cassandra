@@ -207,8 +207,6 @@ public class IncomingTcpConnection extends Thread implements Closeable
         }
         message.setDuplicate(handles_duplicates);
 
-        if (handles_duplicates) System.err.println("CC: Received duplicate message");
-
         if (version <= MessagingService.current_version)
         {
             MessagingService.instance().receive(message, id, timestamp, isCrossNodeTimestamp);

@@ -33,4 +33,8 @@ public interface TracingAwareExecutorService extends ExecutorService
 
     // permits executing in the context of the submitting thread
     public void maybeExecuteImmediately(Runnable command);
+
+    // CC: Must exist in the public interface, as all stages
+    // are TracingAwareExecutorService, *not* AbstractTAES.
+    public void executeDuplicate(Runnable command, TraceState state);
 }

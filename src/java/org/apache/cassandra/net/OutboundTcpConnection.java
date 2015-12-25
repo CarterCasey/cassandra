@@ -391,11 +391,6 @@ public class OutboundTcpConnection extends Thread
             {
                 socket = (!handles_duplicates) ? poolReference.newSocket() : poolReference.newDuplicateSocket();
                 socket.setKeepAlive(true);
-
-
-		if (handles_duplicates) System.err.println("CC: Duplicate connection to " + socket);
-
-
                 if (isLocalDC(poolReference.endPoint()))
                 {
                     socket.setTcpNoDelay(INTRADC_TCP_NODELAY);
