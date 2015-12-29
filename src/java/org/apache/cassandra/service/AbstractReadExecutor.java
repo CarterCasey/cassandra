@@ -190,8 +190,7 @@ public abstract class AbstractReadExecutor
         ReadRepairDecision repairDecision = Schema.instance.getCFMetaData(command.ksName, command.cfName).newReadRepairDecision();
         List<InetAddress> targetReplicas = consistencyLevel.filterForQuery(keyspace, allReplicas, repairDecision);
 
-	// FOR TESTING:                                           v Changed from 1 to 0
-        List<InetAddress> duplicateReplicas = allReplicas.subList(0, (allReplicas.size() < DatabaseDescriptor.getDuplicateCount())
+        List<InetAddress> duplicateReplicas = allReplicas.subList(1, (allReplicas.size() < DatabaseDescriptor.getDuplicateCount())
                                                                      ? allReplicas.size()
                                                                      : DatabaseDescriptor.getDuplicateCount());
 
