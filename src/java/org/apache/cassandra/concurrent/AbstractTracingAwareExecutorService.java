@@ -26,7 +26,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-// Implementing priority queueing
+// CC: Implementing priority queueing
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -194,6 +194,7 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         }   
     }
 
+    // CC: Each task is ordered by its number in the sequence.
     private static AtomicInteger sequence = new AtomicInteger(0);
 
     class FutureTask<T> extends SimpleCondition implements Future<T>, Runnable, Comparable<FutureTask<T>>
