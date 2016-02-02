@@ -19,6 +19,9 @@ package org.apache.cassandra.concurrent;
 
 import java.util.concurrent.*;
 
+// CC: Don't want to implement executeDup
+import java.lang.UnsupportedOperationException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -150,6 +153,12 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
         super.execute(isTracing() && !(command instanceof TraceSessionWrapper)
                       ? new TraceSessionWrapper<Object>(Executors.callable(command, null))
                       : command);
+    }
+
+    @Override // CC: Only using AbstractTracingAware for Duplicates
+    public void executeDuplicate(Runnable command, TraceState state)
+    {
+        throw new UnsupportedOperationException("executeDuplicate not currently supported by DebuggableThreadPoolExecutor");
     }
 
     @Override

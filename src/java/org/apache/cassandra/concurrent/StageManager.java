@@ -129,6 +129,12 @@ public class StageManager
             super.execute(command);
         }
 
+        @Override // CC: Only using AbstractTracingAware for Duplicates
+        public void executeDuplicate(Runnable command, TraceState state)
+        {
+            throw new UnsupportedOperationException("executeDuplicate not currently supported by ExecuteOnlyExecutor");
+        }
+
         public void maybeExecuteImmediately(Runnable command)
         {
             execute(command);
