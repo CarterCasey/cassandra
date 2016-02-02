@@ -55,6 +55,8 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
         MessageOut<ReadResponse> reply = new MessageOut<ReadResponse>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                       getResponse(command, row),
                                                                       ReadResponse.serializer);
+        reply.setDuplicate(message.isDuplicate());
+
         Tracing.trace("Enqueuing response to {}", message.from);
         MessagingService.instance().sendReply(reply, id, message.from);
     }
