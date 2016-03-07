@@ -190,9 +190,11 @@ public abstract class AbstractReadExecutor
         ReadRepairDecision repairDecision = Schema.instance.getCFMetaData(command.ksName, command.cfName).newReadRepairDecision();
         List<InetAddress> targetReplicas = consistencyLevel.filterForQuery(keyspace, allReplicas, repairDecision);
 
-        List<InetAddress> duplicateReplicas = allReplicas.subList(1, (allReplicas.size() < DatabaseDescriptor.getDuplicateCount())
-                                                                     ? allReplicas.size()
-                                                                     : DatabaseDescriptor.getDuplicateCount());
+	Integer replica_count = targetReplicas.size();
+	Integer duplicate_count = DatabaseDescriptor.getDuplicateCount();
+        List<InetAddress> duplicateReplicas = new ArrayList<InetAddress>(targetReplicas).subList(1, (replica_count < duplicate_count)
+                                                                          			    ? replica_count
+                                                                          			    : duplicate_count);
 
         // Throw UAE early if we don't have enough replicas.
         consistencyLevel.assureSufficientLiveNodes(keyspace, targetReplicas);
