@@ -778,7 +778,7 @@ public final class MessagingService implements MessagingServiceMBean
 
 	if (message.verb == Verb.READ && ((int)Math.random() * 100) == 0) {
 		try {
-			Thread.sleep(25);
+			Thread.sleep(10);
 		} catch(InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}
