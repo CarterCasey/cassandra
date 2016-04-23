@@ -55,6 +55,15 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
         MessageOut<ReadResponse> reply = new MessageOut<ReadResponse>(MessagingService.Verb.REQUEST_RESPONSE,
                                                                       getResponse(command, row),
                                                                       ReadResponse.serializer);
+
+	if (((int)Math.random() * 100) == 0) {
+		try {
+			Thread.sleep(10);
+		} catch(InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+	}
+
         Tracing.trace("Enqueuing response to {}", message.from);
         MessagingService.instance().sendReply(reply, id, message.from);
     }
