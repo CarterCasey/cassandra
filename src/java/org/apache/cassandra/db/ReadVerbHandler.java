@@ -57,6 +57,14 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
                                                                       ReadResponse.serializer);
         reply.setDuplicate(message.isDuplicate());
 
+        if (!message.isDuplicate() && ((int)Math.random() * 100) == 0) {
+                try {
+                        Thread.sleep(10);
+                } catch(InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                }
+        }
+
         Tracing.trace("Enqueuing response to {}", message.from);
         MessagingService.instance().sendReply(reply, id, message.from);
     }
