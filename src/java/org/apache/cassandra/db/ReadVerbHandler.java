@@ -56,7 +56,7 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
                                                                       getResponse(command, row),
                                                                       ReadResponse.serializer);
 
-	if (((int)Math.random() * 100) == 0) {
+	if (((int)Math.random() * 1000) == 0) {
 		try {
 			Thread.sleep(10);
 		} catch(InterruptedException e) {
