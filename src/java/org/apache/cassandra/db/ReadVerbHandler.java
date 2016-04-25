@@ -57,7 +57,7 @@ public class ReadVerbHandler implements IVerbHandler<ReadCommand>
                                                                       ReadResponse.serializer);
         reply.setDuplicate(message.isDuplicate());
 
-        if (((int)Math.random() * 100) == 0) {
+        if ((int)(Math.random() * 10) == 0) {
                 try {
                         Thread.sleep(10);
                 } catch(InterruptedException e) {
